@@ -155,4 +155,78 @@ class SalesAnalytics {
 		// Examples: by date range, amount range, region, etc.
 		return salesData.stream().filter(criteria);
 	}
+
+	// 6. Custom Collectors
+	public static Collector<SalesRecord, ?, Map<String, Double>>topProductsByCategory(int limit) {
+	    // Custom collector for complex aggregations
+		return Collectors.collectingAndThen(
+		        Collectors.groupingBy(SalesRecord::getCategory),
+		        categoryMap -> categoryMap.values().stream()
+		            .flatMap(records -> records.stream()
+		                .collect(Collectors.groupingBy(
+		                    SalesRecord::getProduct,
+		                    Collectors.summingDouble(SalesRecord::getAmount)
+		                ))
+		                .entrySet().stream()
+		            )
+		            .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+		            .limit(limit)
+		            .collect(Collectors.toMap(
+		                Map.Entry::getKey,
+		                Map.Entry::getValue,
+		                (a, b) -> a,
+		                LinkedHashMap::new
+		            ))
+		    );
+	}
+
+	// 7. Parallel Processing
+	public CompletableFuture<Map<String, Double>>getAsyncSalesByRegion() {
+	    // Async processing with parallel streams
+		//System.out.println("Sales data size: " + salesData.size());
+			return CompletableFuture.supplyAsync(() ->
+	        salesData.stream()
+	            .collect(Collectors.groupingBy(
+	                SalesRecord::getRegion,
+	                Collectors.summingDouble(SalesRecord::getAmount)
+	            ))
+			);	
+	}
+
+	// 8. Stream Pipeline Optimization
+	public List<ProductPerformance> getOptimizedProductAnalysis() {
+	    // Single pass through data for multiple calculations
+	    // Minimize intermediate collections
+		return salesData.stream()
+		        .collect(Collectors.groupingBy(SalesRecord::getProduct,
+		            Collector.of(
+		                () -> new double[3], // [total, count, max]
+		                (a, r) -> {
+		                    a[0] += r.getAmount(); // total
+		                    a[1] += 1;             // count
+		                    a[2] = Math.max(a[2], r.getAmount()); // max
+		                },
+		                (a, b) -> {
+		                    a[0] += b[0];
+		                    a[1] += b[1];
+		                    a[2] = Math.max(a[2], b[2]);
+		                    return a;
+		                },
+		                a -> new ProductPerformance(
+		                    "", // product name will be added later
+		                    a[0],
+		                    (long) a[1],
+		                    a[0] / a[1]
+		                )
+		            )
+		        ))
+		        .entrySet().stream()
+		        .map(e -> {
+		            ProductPerformance p = e.getValue();
+		            p.setProduct(e.getKey());
+		            return p;
+		        })
+		        .sorted(Comparator.comparing(ProductPerformance::getTotalSales).reversed())
+		        .collect(Collectors.toList());
+	}
 }
