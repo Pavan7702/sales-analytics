@@ -82,6 +82,51 @@ public class Main {
         analytics.findSalesBy(s -> s.getRegion().equalsIgnoreCase("South"))
             .forEach(s -> System.out.println(s.getProduct() + " → " + s.getRegion()));
 
+
+		//6 Use the custom collector
+        Map<String, Double> topProducts = salesData.stream()
+            .collect(SalesAnalytics.topProductsByCategory(3)); // Top 3 products across categories
+
+        // Print the result
+        System.out.println("\n Top Products by Sales:");
+        topProducts.forEach((product, totalSales) ->
+            System.out.println(product + " → ₹" + totalSales)
+        );
+        
+        //7 Trigger async processing
+		//CompletableFuture<Map<String, Double>> future = analytics.getAsyncSalesByRegion();
+		//
+		//// Handle result when ready
+		//future.thenAccept(salesByRegion -> {
+		//    System.out.println("\n Async Sales by Region:");
+		//    salesByRegion.forEach((region, totalSales) ->
+		//        System.out.println(region + " → ₹" + totalSales)
+		//    );
+		//});
+		//
+		//// Optional: block main thread until result is ready (for demo purposes)
+		//future.join();
+        
+        Map<String, Double> regionSales = analytics.getAsyncSalesByRegion().join();
+
+        System.out.println("\nAsync Sales by Region:");
+        regionSales.forEach((region, totalSales) ->
+            System.out.println(region + " → ₹" + totalSales)
+        );
+        
+        //8 Call optimized product analysis
+        List<ProductPerformance> performanceList = analytics.getOptimizedProductAnalysis();
+
+        // Print results
+        System.out.println("\nOptimized Product Performance:");
+        for (ProductPerformance p : performanceList) {
+            System.out.println("Product: " + p.getProduct());
+            System.out.println("  Total Sales: ₹" + p.getTotalSales());
+            System.out.println("  Transactions: " + p.getCount());
+            System.out.println("  Average Sale: ₹" + p.getAverage());
+            System.out.println("-----------------------------");
+        }
+
 	}
 
 }
